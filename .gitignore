@@ -2,3 +2,4 @@ img
 img/*
 *.out
 *.swp
+.DS_Store

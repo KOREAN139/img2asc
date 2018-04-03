@@ -19,35 +19,32 @@ int main(int argc, char *argv[]){
   };
   int i, j, idx;
   int width, height, size, padding;
-  char *img;
-  unsigned char grey;
-  FILE *fp, *fpO;
+  char *img, newPixel;
+  double grey;
+  FILE *fpIn, *fpOut;
   BITMAPFILEHEADER fileHeader;
   BITMAPINFOHEADER infoHeader;
   RGBTRIPLE *pixel; 
 
   /* Get bitmap file with binary mode */
-  if(!(fp = fopen(argv[1], "rb"))) goto exit;
-  fpO = fopen("out.txt", "w");
+  if(!(fpIn = fopen(argv[1], "rb"))) goto exit;
+  fpOut = fopen("out.txt", "w");
 
   /* Read file header from file stream */
-  if(fread(&fileHeader, sizeof(BITMAPFILEHEADER), 1, fp) < 1){
+  if(fread(&fileHeader, sizeof(BITMAPFILEHEADER), 1, fpIn) < 1){
     puts("Failed to read file header from file");
-    fclose(fp);
     goto exit;
   }
 
   /* Check whether this file is bitmap or not */
   if(fileHeader.bfType != 0x4D42){
     puts("This file is not bitmap");
-    fclose(fp);
     goto exit;
   }
 
   /* Read info header from file stream */
-  if(fread(&infoHeader, sizeof(BITMAPINFOHEADER), 1, fp) < 1){
+  if(fread(&infoHeader, sizeof(BITMAPINFOHEADER), 1, fpIn) < 1){
     puts("Failed to read info header from file");
-    fclose(fp);
     goto exit;
   }
 
@@ -65,23 +62,27 @@ int main(int argc, char *argv[]){
   img = malloc(size);
 
   /* Set file pointer to point very start of pixel-data */
-  fseek(fp, fileHeader.bfOffBits, SEEK_SET);
+  fseek(fpIn, fileHeader.bfOffBits, SEEK_SET);
 
-  fread(img, size, 1, fp);
+  /* Get pixel-data */
+  fread(img, size, 1, fpIn);
 
-  for(i = height; i--; fprintf(fpO, "\n")){
+  for(i = height; i--; fprintf(fpOut, "\n")){
     for(j = 0; j < width; j++){
+      /* Calc current position in bmp pixel-data */
       idx = (j * 3) + (i * width * 3) + padding * i;
       pixel = (RGBTRIPLE *)&img[idx];
-      grey = (pixel->rgbtBlue + pixel->rgbtGreen + pixel->rgbtRed) / 3;
-      fprintf(fpO, "%c%c", asc[grey * 70 / 256], asc[grey * 70 / 256]);
+      /* Implemented ITU-R Recommendation BT.601 */
+      grey = pixel->rgbtBlue * 0.114 + pixel->rgbtGreen * 0.587 + pixel->rgbtRed * 0.299;
+      newPixel = asc[(int)(grey * 70 / 256)];
+      fprintf(fpOut, "%c%c", newPixel, newPixel);
     }
   }
 
 exit:
 
   free(img);
-  fclose(fp);
-  fclose(fpO);
+  fclose(fpIn);
+  fclose(fpOut);
   return 0;
 }
